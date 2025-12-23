@@ -2,8 +2,10 @@ package com.projeto_estudo_spring.controller;
 
 import java.util.Map;
 import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.projeto_estudo_spring.model.Usuario;
@@ -16,12 +18,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequestMapping("/auth")
 public class AuthController {
     
-    @Autowired
     private UsuarioService usuarioService;
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
+
+    public AuthController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
-        Usuario usuario = usuarioService.registrarUsuario(request.get("username"),"password");
+        Usuario usuario = usuarioService.registrarUsuario(request.get("username"), request.get("password"));
         return ResponseEntity.ok(usuario);
     }
 
@@ -29,7 +36,12 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
         Optional<Usuario> usuario = usuarioService.buscarPorUsername(request.get("username"));
 
-        if(usuario.isPresent() && usuario.get().getPassword().equals(request.get("password"))){
+        if (usuario.isPresent() &&
+            passwordEncoder.matches(
+                request.get("password"),
+                usuario.get().getPassword()
+            )
+        ) {
             String token = JwtUtil.generateToken(usuario.get().getUsername());
             return ResponseEntity.ok(Map.of("token", token));
         }
@@ -37,9 +49,4 @@ public class AuthController {
             
     }
     
-    
-
-
-
-
 }
